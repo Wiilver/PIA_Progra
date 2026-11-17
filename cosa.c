@@ -9,6 +9,11 @@ typedef struct{
 }Numero;
 
 typedef struct{
+    double ihat;
+    double jhat;
+}Vector;
+
+typedef struct{
     Numero * terminos;
     int longitud;
 }Expresion;
@@ -17,10 +22,55 @@ typedef struct{
     int filas;
     int columnas;
     char *** cadenas;
-    int mx;
-    int my;
     int par;
 }Buffer;
+
+typedef struct{
+    Vector v1;
+    Vector v2;
+}Matriz;
+
+int verificaMat(Matriz m){
+    if(m.v1.ihat == 0){
+        if(m.v1.jhat == 0) return 0;
+        //Lo que hace esto es intercambiar las filas
+        m.v1.ihat = m.v1.jhat;
+        //Como queremos guardar i gorrito, usamos el temporalmente el j de v1
+        m.v1.jhat = m.v2.ihat;
+
+        m.v2.ihat = m.v2.jhat;
+        m.v2.jhat = m.v1.jhat;
+        //Devolvemos el 0 donde va
+        m.v1.jhat = 0; 
+    }
+    //Restamos la primera a la segunda
+    m.v2.ihat /= m.v1.ihat;
+    m.v2.jhat -= (m.v2.ihat * m.v1.jhat);
+
+    return (m.v2.jhat != 0);
+}
+
+void rellenaMat(Matriz * m){
+    double num;
+    while(1){
+        printf("Por favor, ingrese el valor para la componente i de su primer vector : ");
+        scanf("%lf", &(*m).v1.ihat);
+
+        printf("Por favor, ingrese el valor para la componente j de su primer vector : ");
+        scanf("%lf", &(*m).v1.jhat);
+        
+        printf("Por favor, ingrese el valor para la componente i de su segundo vector : ");
+        scanf("%lf", &(*m).v2.ihat);
+
+        printf("Por favor, ingrese el valor para la componente j de su segundo vector : ");
+        scanf("%lf", &(*m).v2.jhat);
+
+        if(verificaMat((*m))) return;
+        system("cls");
+        printf("La matriz ingresada no corresponde a una transformacion lineal, por favor, intentelo nuevamente\n\n");
+    }
+
+}
 
 void asignarRGB(char cadena[], char R[], char G[], char B[]){
     cadena[7]  = R[0];
@@ -93,10 +143,6 @@ void iniciarBuffer(Buffer * b, int filas, int columnas){
     (*b).columnas = columnas;
     (*b).par = (filas - 1) % 2;
 
-    //No se porque jeje, pero asi cuadra siempre
-    (*b).my = 5 - (((columnas - 1) % 10) / 2);
-    (*b).mx = (*b).my - (*b).par;
-
     (*b).cadenas = calloc(filas, sizeof(char**));
     for(i = 0; i < filas; i++){
         (*b).cadenas[i] = calloc(columnas, sizeof(char*));
@@ -168,8 +214,15 @@ void rellenaFun(Buffer * b, int inicio, int fin, int x){
     }
 }
 
-void dibujarFun(Expresion * e, Buffer * b){
+void aplicarTra(Matriz * m, Vector * v){
+    double num = (*v).ihat;
+    (*v).ihat = (((*m).v1.ihat * (*v).ihat) + ((*m).v2.ihat * (*v).jhat));
+    (*v).jhat = (((*m).v1.jhat * num) + ((*m).v2.jhat * (*v).jhat));
+}
+
+void dibujarFun(Expresion * e, Buffer * b, Matriz * m){
     //debemos de revisar la evaluacion de funciones y considerar hacer polinomios de la forma (x-1)(x+15)...etc
+    Vector v;
     double suma;
     int anterior = -1;
     int i, j, indice;
@@ -177,14 +230,25 @@ void dibujarFun(Expresion * e, Buffer * b){
     //Comente esta linea y el programa, literalmente, paso de n^2 a n xd
     //for(i = 0; i < (*b).filas; i++){
     for(i = 0; i < (*b).columnas; i++){
+        v.ihat = i;
+        v.jhat = 0;
         suma = 0;
         for(j = 0; j < (*e).longitud; j++){
             suma+= evaluarFuncion(&(*e).terminos[j], i, (*b).columnas);
         }
-        if((suma <= ((*b).filas / 2) - (*b).par) && (suma >=((-(*b).filas / 2)))){
-            indice = (*b).filas - ((int)suma + (*b).filas / 2) - 1;
-            asignarRGB((*b).cadenas[indice][i], "255", "255", "255");
-            asignarCar((*b).cadenas[indice][i], "OO");
+        v.jhat = suma;
+        aplicarTra(m, &v);
+        printf("X : %lf\n", v.ihat);
+        printf("Y : %lf\n", v.jhat);
+
+        //Aqui hay algo que no cuadra con la validacion, pero se supone que funciona
+        if(((v.ihat <= ((*b).columnas / 2) - (*b).par) && (v.ihat >=((-(*b).columnas / 2))))&&
+           ((v.jhat <= ((*b).filas / 2) - (*b).par) && (v.jhat >=((-(*b).filas / 2))))){
+            printf("Valido\n\n");
+            //Esta mal la asignacion de coordenadas
+            indice = (*b).filas - ((int)v.jhat + (*b).filas / 2) - 1;
+            asignarRGB((*b).cadenas[indice][(*b).filas - ((int)v.ihat + (*b).filas / 2) - 1], "255", "255", "255");
+            asignarCar((*b).cadenas[indice][(*b).filas - ((int)v.ihat + (*b).filas / 2) - 1], "OO");
             //Falta hacer que se rellene cuando no empiece desde los extremos
             if((anterior != -1)&&(i != 0)){
                 if((anterior != indice - 1) && (anterior != indice) && (anterior != indice + 1)){
@@ -211,14 +275,18 @@ int main(){
     GetConsoleMode(consola, &modo);
     SetConsoleMode(consola, modo | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
 
+    Matriz m ;
     Expresion e;
     Buffer b;
     int dummy;
-
+    
+    rellenaMat(&m);
     iniciarBuffer(&b, 50,50);
     iniciarFun(&e);
-    dibujarFun(&e, &b);
+    dibujarFun(&e, &b, &m);
     imprimirBuffer(&b);
     scanf("%d", &dummy);
+
+    
     return 0;
 }
