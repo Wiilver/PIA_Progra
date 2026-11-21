@@ -33,15 +33,7 @@ typedef struct{
 int verificaMat(Matriz m){
     if(m.v1.ihat == 0){
         if(m.v1.jhat == 0) return 0;
-        //Lo que hace esto es intercambiar las filas
-        m.v1.ihat = m.v1.jhat;
-        //Como queremos guardar i gorrito, usamos el temporalmente el j de v1
-        m.v1.jhat = m.v2.ihat;
-
-        m.v2.ihat = m.v2.jhat;
-        m.v2.jhat = m.v1.jhat;
-        //Devolvemos el 0 donde va
-        m.v1.jhat = 0; 
+        return (m.v2.ihat != 0);
     }
     //Restamos la primera a la segunda
     m.v2.ihat /= m.v1.ihat;
@@ -51,7 +43,6 @@ int verificaMat(Matriz m){
 }
 
 void rellenaMat(Matriz * m){
-    double num;
     while(1){
         printf("Por favor, ingrese el valor para la componente i de su primer vector : ");
         scanf("%lf", &(*m).v1.ihat);
@@ -92,7 +83,7 @@ void asignarCar(char cadena[], char car[]){
 double evaluarFuncion(Numero * n, int num, int col){
     return (pow(num - col /2, (*n).exponente) * (*n).coeficiente);
 }
-//Esta terriblemente mal, pero ahhi va
+//Esta terriblemente mal, pero ahi va
 void rellenaBuffer(Buffer * b){
     int i, j, repeticiones, res, largo, indice;
     largo = (*b).columnas/2;
@@ -105,30 +96,37 @@ void rellenaBuffer(Buffer * b){
     //Como guia, si tuvieras el punto (1, 0), se esperaba tener (0,1) (-1,0) y (0, -1)
     //Estoy 99 por ciento seguro de que aqui suceden repeticiones de mas
     //Tambien , esto solo funciona cuando la funcion es constante, deberia de cambiar con otras rectas
-    for(i = 0; i < (*b).columnas; i++){
+    for(i = 0; i < (*b).columnas/2; i++){
         for(j = 0; j < repeticiones; j++){
             n.coeficiente = (double)(j * 5);
             res = (int)evaluarFuncion(&n, i, (*b).columnas);
             if(res <= (largo - (*b).par)){
                 indice = largo + res - (*b).par;
-                
+                //Debe de cambiar dependiendo de si es en x o y
                 asignarRGB((*b).cadenas[indice][i], "087", "087", "087");
                 asignarCar((*b).cadenas[indice][i], " .");
-                
+                asignarRGB((*b).cadenas[48-indice][48-i], "087", "087", "087");
+                asignarCar((*b).cadenas[48-indice][48-i], " .");
                 indice += (*b).par;;
                 
                 asignarRGB((*b).cadenas[i][indice], "087", "087", "087");
                 asignarCar((*b).cadenas[i][indice], " .");
-
+                asignarRGB((*b).cadenas[48-i][48-indice], "087", "087", "087");
+                asignarCar((*b).cadenas[48-i][48-indice], " .");
                 indice = largo - res - (*b).par;
                 
                 asignarRGB((*b).cadenas[indice][i], "087", "087", "087");
                 asignarCar((*b).cadenas[indice][i], " .");
+                asignarRGB((*b).cadenas[48-indice][48-i], "087", "087", "087");
+                asignarCar((*b).cadenas[48-indice][48-i], " .");
                 
                 indice += (*b).par;
                 
                 asignarRGB((*b).cadenas[i][indice], "087", "087", "087");
                 asignarCar((*b).cadenas[i][indice], " .");
+                asignarRGB((*b).cadenas[48-i][48-indice], "087", "087", "087");
+                asignarCar((*b).cadenas[48-i][48-indice], " .");
+                
             }
         }
     }
@@ -230,7 +228,8 @@ void dibujarFun(Expresion * e, Buffer * b, Matriz * m){
     //Comente esta linea y el programa, literalmente, paso de n^2 a n xd
     //for(i = 0; i < (*b).filas; i++){
     for(i = 0; i < (*b).columnas; i++){
-        v.ihat = i;
+        //Debe de ser tamanio dinamico
+        v.ihat = i-24;
         v.jhat = 0;
         suma = 0;
         for(j = 0; j < (*e).longitud; j++){
@@ -244,12 +243,13 @@ void dibujarFun(Expresion * e, Buffer * b, Matriz * m){
         //Aqui hay algo que no cuadra con la validacion, pero se supone que funciona
         if(((v.ihat <= ((*b).columnas / 2) - (*b).par) && (v.ihat >=((-(*b).columnas / 2))))&&
            ((v.jhat <= ((*b).filas / 2) - (*b).par) && (v.jhat >=((-(*b).filas / 2))))){
-            printf("Valido\n\n");
+            printf("Valido\n\n");   
             //Esta mal la asignacion de coordenadas
             indice = (*b).filas - ((int)v.jhat + (*b).filas / 2) - 1;
-            asignarRGB((*b).cadenas[indice][(*b).filas - ((int)v.ihat + (*b).filas / 2) - 1], "255", "255", "255");
-            asignarCar((*b).cadenas[indice][(*b).filas - ((int)v.ihat + (*b).filas / 2) - 1], "OO");
+            asignarRGB((*b).cadenas[(*b).filas - ((int)v.ihat + (*b).filas / 2) - 1][indice], "081", "217", "133");
+            asignarCar((*b).cadenas[(*b).filas - ((int)v.ihat + (*b).filas / 2) - 1][indice], "OO");
             //Falta hacer que se rellene cuando no empiece desde los extremos
+            //Falta que funcione con transformaciones
             if((anterior != -1)&&(i != 0)){
                 if((anterior != indice - 1) && (anterior != indice) && (anterior != indice + 1)){
                     if(anterior < indice) rellenaFun(b, indice, anterior, i);
