@@ -42,6 +42,7 @@ int verificaMat(Matriz m){
     return (m.v2.jhat != 0);
 }
 
+//Creo que por cosa de matematicas, los renglones de la matriz o las columnas deberian de estar invertidas
 void rellenaMat(Matriz * m){
     while(1){
         printf("Por favor, ingrese el valor para la componente i de su primer vector : ");
@@ -83,7 +84,35 @@ void asignarCar(char cadena[], char car[]){
 double evaluarFuncion(Numero * n, int num, int col){
     return (pow(num - col /2, (*n).exponente) * (*n).coeficiente);
 }
-//Esta terriblemente mal, pero ahi va
+
+void auxiliaBuffer(Buffer * b, int y, int x){
+    char cad[] = " .";
+    char col[] = "087";
+    if((x==(*b).columnas/2)||(y==(*b).filas/2-(*b).par)){
+        col[0] = '2';
+        col[1] = '5';
+        col[2] = '5';
+        if((x==(*b).columnas/2)&&(y==(*b).filas/2-(*b).par)){
+            cad[0] = 'O';
+            cad[1] = 'O';
+        }
+        else if((x==(*b).columnas/2)){
+            cad[0] = '|';
+            cad[1] = '|';
+        }
+        else{
+            cad[0] = '=';
+            cad[1] = '=';
+        }
+    }
+    asignarRGB((*b).cadenas[y][x], col, col, col);
+    asignarCar((*b).cadenas[y][x], cad);
+    if(x > 0) x-=(*b).par;
+    asignarRGB((*b).cadenas[(*b).columnas - (*b).par - y - 1][(*b).filas - x - 1], col, col, col);
+    asignarCar((*b).cadenas[(*b).columnas - (*b).par - y - 1][(*b).filas - x - 1], cad);
+}
+
+//ahi va, falta que se afecten por la transformacion
 void rellenaBuffer(Buffer * b){
     int i, j, repeticiones, res, largo, indice;
     largo = (*b).columnas/2;
@@ -91,42 +120,22 @@ void rellenaBuffer(Buffer * b){
 
     Numero n = {0,0};
     
-    //De normal esperaba que este for, el primero , solo se hiciera la mitad de la longitud de
-    //columnas, por ejemplo si midiera 50, que lo hiciera 25 veces
-    //Como guia, si tuvieras el punto (1, 0), se esperaba tener (0,1) (-1,0) y (0, -1)
-    //Estoy 99 por ciento seguro de que aqui suceden repeticiones de mas
-    //Tambien , esto solo funciona cuando la funcion es constante, deberia de cambiar con otras rectas
     for(i = 0; i < (*b).columnas/2; i++){
         for(j = 0; j < repeticiones; j++){
             n.coeficiente = (double)(j * 5);
             res = (int)evaluarFuncion(&n, i, (*b).columnas);
             if(res <= (largo - (*b).par)){
                 indice = largo + res - (*b).par;
-                //Debe de cambiar dependiendo de si es en x o y
-                asignarRGB((*b).cadenas[indice][i], "087", "087", "087");
-                asignarCar((*b).cadenas[indice][i], " .");
-                asignarRGB((*b).cadenas[48-indice][48-i], "087", "087", "087");
-                asignarCar((*b).cadenas[48-indice][48-i], " .");
+                auxiliaBuffer(b, indice, i);
+
                 indice += (*b).par;;
-                
-                asignarRGB((*b).cadenas[i][indice], "087", "087", "087");
-                asignarCar((*b).cadenas[i][indice], " .");
-                asignarRGB((*b).cadenas[48-i][48-indice], "087", "087", "087");
-                asignarCar((*b).cadenas[48-i][48-indice], " .");
+                auxiliaBuffer(b, i, indice);
+
                 indice = largo - res - (*b).par;
-                
-                asignarRGB((*b).cadenas[indice][i], "087", "087", "087");
-                asignarCar((*b).cadenas[indice][i], " .");
-                asignarRGB((*b).cadenas[48-indice][48-i], "087", "087", "087");
-                asignarCar((*b).cadenas[48-indice][48-i], " .");
-                
+                auxiliaBuffer(b, indice, i);
+
                 indice += (*b).par;
-                
-                asignarRGB((*b).cadenas[i][indice], "087", "087", "087");
-                asignarCar((*b).cadenas[i][indice], " .");
-                asignarRGB((*b).cadenas[48-i][48-indice], "087", "087", "087");
-                asignarCar((*b).cadenas[48-i][48-indice], " .");
-                
+                auxiliaBuffer(b, i, indice);
             }
         }
     }
@@ -134,8 +143,6 @@ void rellenaBuffer(Buffer * b){
 
 void iniciarBuffer(Buffer * b, int filas, int columnas){
     int i, j;
-
-    Numero n = {0, 1};
 
     (*b).filas = filas;
     (*b).columnas = columnas;
@@ -221,29 +228,20 @@ void aplicarTra(Matriz * m, Vector * v){
 void dibujarFun(Expresion * e, Buffer * b, Matriz * m){
     //debemos de revisar la evaluacion de funciones y considerar hacer polinomios de la forma (x-1)(x+15)...etc
     Vector v;
-    double suma;
     int anterior = -1;
     int i, j, indice;
     
-    //Comente esta linea y el programa, literalmente, paso de n^2 a n xd
-    //for(i = 0; i < (*b).filas; i++){
     for(i = 0; i < (*b).columnas; i++){
-        //Debe de ser tamanio dinamico
-        v.ihat = i-24;
+        v.ihat = i-(*b).filas/2+(*b).par;
         v.jhat = 0;
-        suma = 0;
         for(j = 0; j < (*e).longitud; j++){
-            suma+= evaluarFuncion(&(*e).terminos[j], i, (*b).columnas);
+            v.jhat += evaluarFuncion(&(*e).terminos[j], i, (*b).columnas);
         }
-        v.jhat = suma;
         aplicarTra(m, &v);
-        printf("X : %lf\n", v.ihat);
-        printf("Y : %lf\n", v.jhat);
 
         //Aqui hay algo que no cuadra con la validacion, pero se supone que funciona
         if(((v.ihat <= ((*b).columnas / 2) - (*b).par) && (v.ihat >=((-(*b).columnas / 2))))&&
            ((v.jhat <= ((*b).filas / 2) - (*b).par) && (v.jhat >=((-(*b).filas / 2))))){
-            printf("Valido\n\n");   
             //Esta mal la asignacion de coordenadas
             indice = (*b).filas - ((int)v.jhat + (*b).filas / 2) - 1;
             asignarRGB((*b).cadenas[(*b).filas - ((int)v.ihat + (*b).filas / 2) - 1][indice], "081", "217", "133");
@@ -272,16 +270,17 @@ void imprimirBuffer(Buffer * b){
 int main(){
     HANDLE consola = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD modo;
+    CONSOLE_SCREEN_BUFFER_INFO info;
     GetConsoleMode(consola, &modo);
     SetConsoleMode(consola, modo | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
-
+    
     Matriz m ;
     Expresion e;
     Buffer b;
     int dummy;
     
     rellenaMat(&m);
-    iniciarBuffer(&b, 50,50);
+    iniciarBuffer(&b, 75,75);
     iniciarFun(&e);
     dibujarFun(&e, &b, &m);
     imprimirBuffer(&b);
