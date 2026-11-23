@@ -54,15 +54,18 @@ int verificaMat(Matriz m){
 }
 
 void transfElem(Matriz m, Transformaciones * t){
+    double dummy;
     if((m.v1.ihat) && (m.v1.jhat) && (m.v2.ihat)&& (m.v2.jhat)){
+        dummy = ((m.v1.ihat * m.v2.jhat) - (m.v1.jhat * m.v2.ihat));
+        (*t).expansiones.v2.jhat = m.v2.jhat;
+        (*t).expansiones.v1.ihat = dummy/m.v2.jhat;
         (*t).expansiones.v1.jhat = 0;
         (*t).expansiones.v2.ihat = 0;
-        (*t).cortes.v1.ihat = 0;
-        (*t).cortes.v2.jhat = 0;
-        (*t).expansiones.v1.ihat = m.v1.ihat;
-        (*t).cortes.v2.ihat = m.v2.ihat/m.v1.ihat;
-        (*t).expansiones.v2.jhat = m.v2.jhat/(1+m.v2.ihat);
-        (*t).cortes.v1.jhat = m.v1.jhat/(*t).expansiones.v2.jhat;
+
+        (*t).cortes.v1.jhat = m.v1.jhat/m.v2.jhat;
+        (*t).cortes.v2.ihat = (m.v2.ihat * m.v2.jhat)/dummy;
+        (*t).cortes.v2.jhat = 1;
+        (*t).cortes.v1.ihat = 1 + ((*t).cortes.v1.jhat * (*t).cortes.v2.ihat);
         return;
     }
 
@@ -192,25 +195,36 @@ void rellenaFun(Buffer * b, double anterior, Vector punto, Transformaciones * t)
     Vector dummy;
     dummy.ihat = punto.ihat;
     if(dif > 0){
-        for(i = 0; i <= dif; i++){
+        for(i = 0; i < dif; i++){
             dummy.jhat = punto.jhat+i;
+            printf("X2 : %lf\n", dummy.ihat);
+            printf("Y2 : %lf\n\n", dummy.jhat);
             aplicarTra(&(*t).cortes, &dummy);
-            y = (*b).filas - ((int)dummy.jhat + (*b).filas / 2) - 1;
-            x = ((int)dummy.ihat + (*b).columnas / 2) - (*b).par;
+            if((dummy.ihat < 0)||(dummy.ihat > (*b).columnas)){
+                printf("Sali\n");
+                break;
+            } 
+            if((dummy.jhat < 0)||(dummy.jhat > (*b).filas)){
+                printf("Sali\n");
+                continue;
+            } 
+            y = (*b).filas - (int)dummy.jhat - 1;
+            x = (*b).columnas - (int)dummy.ihat - (*b).par;
             if(((x < (*b).columnas) && (x >= 0))&&
-            ((y < (*b).filas   ) && (y >= 0))){
+               ((y < (*b).filas)    && (y >= 0))){
+                printf("Rellenado\n");
                 asignarCar((*b).cadenas[y][x], "OO");
                 asignarRGB((*b).cadenas[y][x], "081", "217", "133");
             }
         }
     }
     else{
-        dummy.ihat--;
-        for(i = 0; i >= dif; i--){
-            dummy.jhat = punto.jhat+i;
+        dif++;
+        for(i = 0; i > dif; i--){
+            dummy.jhat = punto.jhat+i-1;
             aplicarTra(&(*t).cortes, &dummy);
-            y = (*b).filas - ((int)dummy.jhat + (*b).filas / 2) - 1;
-            x = ((int)dummy.ihat + (*b).columnas / 2) - (*b).par;
+            y = (*b).filas - (int)dummy.jhat - 1;
+            x =  (*b).columnas - (int)dummy.ihat - (*b).par;
             if(((x < (*b).columnas) && (x >= 0))&&
                ((y < (*b).filas   ) && (y >= 0))){
                 asignarCar((*b).cadenas[y][x], "OO");
@@ -232,17 +246,20 @@ void dibujarFun(Expresion * e, Buffer * b, Transformaciones * t){
         for(j = 0; j < (*e).longitud; j++){
             v.jhat += evaluFun(&(*e).terminos[j], i, (*b).columnas);
         }
-
+        printf("X1 : %lf\n", v.ihat);
+        printf("Y1 : %lf\n\n", v.jhat);
         aplicarTra(&(*t).expansiones, &v);
-
         if((anterior != -1) && (i != 0)){
-            if(abs((int)(anterior - v.jhat)) > (*b).filas) continue;
+            //Hay un problemilla con esto, tambien, cuando la funcion empieza fuera de la matriz se ve cortado
             if((anterior > v.jhat + 1) || (anterior < v.jhat - 1)) rellenaFun(b, anterior, v, t);
         }
+
+       //Hay un problema con que esto se centre cuando rota
         y = (*b).filas - ((int)v.jhat + (*b).filas / 2) - 1;
         x = ((int)v.ihat + (*b).columnas / 2) - (*b).par;
         if(((x < (*b).columnas) && (x >= 0))&&
            ((y < (*b).filas   ) && (y >= 0))){
+            printf("Aprobado\n");
             asignarRGB((*b).cadenas[y][x], "081", "217", "133");
             asignarCar((*b).cadenas[y][x], "OO");
             anterior = v.jhat;
@@ -352,7 +369,6 @@ void imprimeBuffer(Buffer * b){
 int main(){
     HANDLE consola = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD modo;
-    CONSOLE_SCREEN_BUFFER_INFO info;
     GetConsoleMode(consola, &modo);
     SetConsoleMode(consola, modo | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
     
@@ -363,7 +379,13 @@ int main(){
     int dummy;
     
     rellenaMat(&m, &t);
-    iniciarBuffer(&b, 51,51);
+    printf("Expansiones\n");
+    printf("%lf   %lf\n", t.expansiones.v1.ihat, t.expansiones.v2.ihat);
+    printf("%lf   %lf\n", t.expansiones.v1.jhat, t.expansiones.v2.jhat);
+    printf("Cortes\n");
+    printf("%lf   %lf\n", t.cortes.v1.ihat, t.cortes.v2.ihat);
+    printf("%lf   %lf\n", t.cortes.v1.jhat, t.cortes.v2.jhat);
+    iniciarBuffer(&b, 44,44);
     iniciarFun(&e);
     dibujarFun(&e, &b, &t);
     imprimeBuffer(&b);
