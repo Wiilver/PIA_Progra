@@ -189,55 +189,65 @@ void iniciarFun(Expresion * e){
 }
 
 //Ocupamos hacer que esto sea mas inteligente para que las cosas se vean mas naturales
-void rellenaFun(Buffer * b, double anterior, Vector punto, Transformaciones * t){
-    int i, x, y;
-    int dif = (int)(anterior - punto.jhat);
+void rellenaFun(Buffer * b, Vector anterior, Vector punto, Transformaciones * t){
+    int x, y, ini, fin;
     Vector dummy;
-    dummy.ihat = punto.ihat;
-    if(dif > 0){
-        for(i = 0; i < dif; i++){
-            dummy.jhat = punto.jhat+i;
-            printf("X2 : %lf\n", dummy.ihat);
-            printf("Y2 : %lf\n\n", dummy.jhat);
-            aplicarTra(&(*t).cortes, &dummy);
-            if((dummy.ihat < 0)||(dummy.ihat > (*b).columnas)){
-                printf("Sali\n");
-                break;
-            } 
-            if((dummy.jhat < 0)||(dummy.jhat > (*b).filas)){
-                printf("Sali\n");
-                continue;
-            } 
-            y = (*b).filas - (int)dummy.jhat - 1;
-            x = (*b).columnas - (int)dummy.ihat - (*b).par;
-            if(((x < (*b).columnas) && (x >= 0))&&
-               ((y < (*b).filas)    && (y >= 0))){
-                printf("Rellenado\n");
-                asignarCar((*b).cadenas[y][x], "OO");
-                asignarRGB((*b).cadenas[y][x], "081", "217", "133");
-            }
-        }
+    if(anterior.jhat > punto.jhat){
+        dummy.ihat = anterior.ihat;
+        ini = ((int)anterior.jhat);
+        fin = (int)punto.jhat;
     }
     else{
-        dif++;
-        for(i = 0; i > dif; i--){
-            dummy.jhat = punto.jhat+i-1;
-            aplicarTra(&(*t).cortes, &dummy);
-            y = (*b).filas - (int)dummy.jhat - 1;
-            x =  (*b).columnas - (int)dummy.ihat - (*b).par;
-            if(((x < (*b).columnas) && (x >= 0))&&
-               ((y < (*b).filas   ) && (y >= 0))){
-                asignarCar((*b).cadenas[y][x], "OO");
-                asignarRGB((*b).cadenas[y][x], "081", "217", "133");
-            }
+        dummy.ihat = punto.ihat;
+        ini = ((int)punto.jhat)-1;
+        fin = (int)anterior.jhat;
+    }
+    // printf("Inicio : %d\n", ini);
+    // printf("Final  : %d\n", fin);
+    // printf("Phat   : %lf\n", punto.jhat);
+    // printf("Ahat   : %lf\n\n", anterior.jhat);
+    for(ini; ini > fin; ini--){
+        dummy.jhat = (double)ini;
+        aplicarTra(&(*t).cortes, &dummy);
+        y = (*b).filas - ((int)dummy.jhat + (*b).filas / 2) - 1;
+        x = (int)dummy.ihat + (*b).columnas / 2 - (*b).par;
+        if(!(*t).expansiones.v1.ihat){
+            y-=((*b).par);
+            x+=((*b).par);
         }
+        if((x < 0)||(x >= (*b).columnas)||(y < 0)||(y >= (*b).filas)) continue;
+        asignarRGB((*b).cadenas[y][x], "081", "217", "133");
+        asignarCar((*b).cadenas[y][x], "OO");
+    }
+    if(anterior.ihat > punto.ihat){
+        dummy.jhat = anterior.jhat;
+        ini = (int)anterior.ihat;
+        fin = (int)punto.ihat;
+    }
+    else{
+        dummy.jhat = punto.jhat;
+        ini = (int)punto.ihat;
+        fin = (int)anterior.ihat;
+    }
+    for(ini; ini > fin; ini--){
+        dummy.ihat = (double)ini;
+        aplicarTra(&(*t).cortes, &dummy);
+        y = (*b).filas - ((int)dummy.jhat + (*b).filas / 2) - 1;
+        x = (int)dummy.ihat + (*b).columnas / 2 - (*b).par;
+        if(!(*t).expansiones.v1.ihat){
+            y-=((*b).par);
+            x+=((*b).par);
+        }
+        if((x < 0)||(x >= (*b).columnas)||(y < 0)||(y >= (*b).filas)) continue;
+        asignarRGB((*b).cadenas[y][x], "081", "217", "133");
+        asignarCar((*b).cadenas[y][x], "OO");
     }
 }
 
 void dibujarFun(Expresion * e, Buffer * b, Transformaciones * t){
     //debemos de revisar la evaluacion de funciones y considerar hacer polinomios de la forma (x-1)(x+15)...etc
     Vector v;
-    double anterior = -1;
+    Vector anterior = {(*b).columnas,(*b).filas};
     int i, j, x, y;
     
     for(i = 0; i < (*b).columnas; i++){
@@ -246,24 +256,30 @@ void dibujarFun(Expresion * e, Buffer * b, Transformaciones * t){
         for(j = 0; j < (*e).longitud; j++){
             v.jhat += evaluFun(&(*e).terminos[j], i, (*b).columnas);
         }
-        printf("X1 : %lf\n", v.ihat);
-        printf("Y1 : %lf\n\n", v.jhat);
         aplicarTra(&(*t).expansiones, &v);
-        if((anterior != -1) && (i != 0)){
-            //Hay un problemilla con esto, tambien, cuando la funcion empieza fuera de la matriz se ve cortado
-            if((anterior > v.jhat + 1) || (anterior < v.jhat - 1)) rellenaFun(b, anterior, v, t);
-        }
 
-       //Hay un problema con que esto se centre cuando rota
-        y = (*b).filas - ((int)v.jhat + (*b).filas / 2) - 1;
-        x = ((int)v.ihat + (*b).columnas / 2) - (*b).par;
-        if(((x < (*b).columnas) && (x >= 0))&&
-           ((y < (*b).filas   ) && (y >= 0))){
-            printf("Aprobado\n");
-            asignarRGB((*b).cadenas[y][x], "081", "217", "133");
-            asignarCar((*b).cadenas[y][x], "OO");
-            anterior = v.jhat;
+        if((v.jhat < -(*b).columnas/2)||(v.jhat > (*b).columnas/2)||
+           (v.ihat < -(*b).filas   /2)||(v.ihat > (*b).filas   /2)) continue;
+        
+        if((anterior.jhat != (*b).columnas) && (i != 0)){
+            if((anterior.jhat > v.jhat + 1) || (anterior.jhat < v.jhat - 1)||
+               (anterior.ihat > v.ihat + 1) || (anterior.ihat < v.ihat - 1)){
+                rellenaFun(b, anterior, v, t);
+            }
         }
+        
+        anterior = v;
+        aplicarTra(&(*t).cortes, &v);
+        y = (*b).filas - ((int)v.jhat + (*b).filas / 2) - 1;
+        x = (int)v.ihat + (*b).columnas / 2 - (*b).par;
+        if(!(*t).expansiones.v1.ihat){
+            y-=((*b).par);
+            x+=((*b).par);
+        }
+        if((x < 0)||(x >= (*b).columnas)||(y < 0)||(y >= (*b).filas)) continue;
+
+        asignarRGB((*b).cadenas[y][x], "081", "217", "133");
+        asignarCar((*b).cadenas[y][x], "OO");
     }
 }
 
