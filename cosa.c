@@ -30,6 +30,18 @@ typedef struct{
     Vector v2;
 }Matriz;
 
+typedef struct{
+    Matriz expansiones;
+    Matriz cortes;
+    int modo;
+}Transformaciones;
+
+void aplicarTra(Matriz * m, Vector * v){
+    double num = (*v).ihat;
+    (*v).ihat = (((*m).v1.ihat * (*v).ihat) + ((*m).v2.ihat * (*v).jhat));
+    (*v).jhat = (((*m).v1.jhat * num) + ((*m).v2.jhat * (*v).jhat));
+}
+
 int verificaMat(Matriz m){
     if(m.v1.ihat == 0){
         if(m.v1.jhat == 0) return 0;
@@ -42,7 +54,67 @@ int verificaMat(Matriz m){
     return (m.v2.jhat != 0);
 }
 
-void rellenaMat(Matriz * m){
+void transfElem(Matriz m, Transformaciones * t){
+    if((m.v1.ihat) && (m.v1.jhat) && (m.v2.ihat)&& (m.v2.jhat)){
+        (*t).modo = 0;
+        (*t).expansiones.v2.ihat = 0;
+        (*t).expansiones.v1.jhat = 0;
+        (*t).cortes.v1.ihat = 1;
+        (*t).cortes.v2.jhat = 1;
+
+        (*t).expansiones.v2.jhat = m.v2.jhat;
+        
+        (*t).cortes.v2.ihat = m.v2.ihat / (*t).expansiones.v2.jhat;
+        (*t).expansiones.v1.ihat = m.v1.ihat - ((*t).cortes.v2.ihat * m.v2.jhat);
+        (*t).cortes.v1.jhat = m.v1.jhat / (*t).expansiones.v1.ihat;
+        return;
+    }
+    (*t).expansiones = m;;
+    //Debo de verificar esto de nuevo
+    if(((!m.v1.jhat) && (!m.v2.ihat)) || ((!m.v1.ihat) && (!m.v2.jhat))){
+        (*t).cortes.v1.ihat = 1;
+        (*t).cortes.v1.jhat = 0;
+        (*t).cortes.v2.ihat = 0;
+        (*t).cortes.v2.jhat = 1;
+        return;
+    }
+    if(!m.v1.ihat){
+        (*t).modo = 1;
+        (*t).expansiones.v1.ihat = (*t).expansiones.v1.jhat;
+        (*t).expansiones.v2.jhat = (*t).expansiones.v2.ihat;
+        (*t).expansiones.v1.jhat = 0;
+        (*t).expansiones.v2.ihat = 0;
+        (*t).cortes.v1.ihat = 0;
+        (*t).cortes.v1.jhat = 1;
+        (*t).cortes.v2.ihat = 1;
+        (*t).cortes.v2.jhat = m.v2.jhat / m.v1.jhat;
+        return;
+    }
+    if(!m.v2.ihat){
+        (*t).modo = 1;
+        (*t).expansiones.v1.jhat = 0;
+        (*t).cortes.v1.ihat = 1;
+        (*t).cortes.v1.jhat = m.v1.jhat/m.v2.jhat;
+        (*t).cortes.v2.ihat = 0;
+        (*t).cortes.v2.jhat = 1;
+        return;
+    }
+    if(!m.v1.jhat){
+        (*t).expansiones.v2.ihat = 0;
+        (*t).cortes.v1.ihat = 1;
+        (*t).cortes.v1.jhat = 0;
+        (*t).cortes.v2.ihat = m.v2.ihat/m.v1.ihat;
+        (*t).cortes.v2.jhat = 1;
+        return;
+    }
+    (*t).expansiones.v1.ihat = 0;
+    (*t).cortes.v1.ihat = m.v1.ihat/m.v2.ihat;
+    (*t).cortes.v1.jhat = 1;
+    (*t).cortes.v2.ihat = 1;
+    (*t).cortes.v2.jhat = 0;
+}
+
+void rellenaMat(Matriz * m, Transformaciones * t){
     while(1){
         printf("Por favor, ingrese el valor para la componente i de su primer vector : ");
         scanf("%lf", &(*m).v1.ihat);
@@ -56,17 +128,14 @@ void rellenaMat(Matriz * m){
         printf("Por favor, ingrese el valor para la componente j de su segundo vector : ");
         scanf("%lf", &(*m).v2.jhat);
 
-        if(verificaMat((*m))) return;
+        if(verificaMat((*m))){
+            transfElem((*m), t);
+            return;
+        } 
         system("cls");
         printf("La matriz ingresada no corresponde a una transformacion lineal, por favor, intentelo nuevamente\n\n");
     }
 
-}
-
-void aplicarTra(Matriz * m, Vector * v){
-    double num = (*v).ihat;
-    (*v).ihat = (((*m).v1.ihat * (*v).ihat) + ((*m).v2.ihat * (*v).jhat));
-    (*v).jhat = (((*m).v1.jhat * num) + ((*m).v2.jhat * (*v).jhat));
 }
 
 
@@ -277,17 +346,20 @@ int main(){
     SetConsoleMode(consola, modo | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
     
     Matriz m ;
+    Transformaciones t;
     Expresion e;
     Buffer b;
     int dummy;
     
-    rellenaMat(&m);
+    rellenaMat(&m, &t);
+    printf("Expansiones\n");
+    /*
     iniciarBuffer(&b, 51,51);
     iniciarFun(&e);
     dibujarFun(&e, &b, &m);
     imprimeBuffer(&b);
     scanf("%d", &dummy);
-
+*/
     
     return 0;
 }
