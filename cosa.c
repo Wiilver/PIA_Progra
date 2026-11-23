@@ -33,7 +33,6 @@ typedef struct{
 typedef struct{
     Matriz expansiones;
     Matriz cortes;
-    int modo;
 }Transformaciones;
 
 void aplicarTra(Matriz * m, Vector * v){
@@ -56,32 +55,28 @@ int verificaMat(Matriz m){
 
 void transfElem(Matriz m, Transformaciones * t){
     if((m.v1.ihat) && (m.v1.jhat) && (m.v2.ihat)&& (m.v2.jhat)){
-        (*t).modo = 0;
-        (*t).expansiones.v2.ihat = 0;
         (*t).expansiones.v1.jhat = 0;
-        (*t).cortes.v1.ihat = 1;
-        (*t).cortes.v2.jhat = 1;
+        (*t).expansiones.v2.ihat = 0;
+        (*t).cortes.v1.ihat = 0;
+        (*t).cortes.v2.jhat = 0;
+        (*t).expansiones.v1.ihat = m.v1.ihat;
+        (*t).cortes.v2.ihat = m.v2.ihat/m.v1.ihat;
+        (*t).expansiones.v2.jhat = m.v2.jhat/(1+m.v2.ihat);
+        (*t).cortes.v1.jhat = m.v1.jhat/(*t).expansiones.v2.jhat;
+        return;
+    }
 
-        (*t).expansiones.v2.jhat = m.v2.jhat;
-        
-        (*t).cortes.v2.ihat = m.v2.ihat / (*t).expansiones.v2.jhat;
-        (*t).expansiones.v1.ihat = m.v1.ihat - ((*t).cortes.v2.ihat * m.v2.jhat);
-        (*t).cortes.v1.jhat = m.v1.jhat / (*t).expansiones.v1.ihat;
-        return;
-    }
-    (*t).expansiones = m;;
-    //Debo de verificar esto de nuevo
-    if(((!m.v1.jhat) && (!m.v2.ihat)) || ((!m.v1.ihat) && (!m.v2.jhat))){
-        (*t).cortes.v1.ihat = 1;
-        (*t).cortes.v1.jhat = 0;
-        (*t).cortes.v2.ihat = 0;
-        (*t).cortes.v2.jhat = 1;
-        return;
-    }
+    (*t).expansiones = m;
+    (*t).cortes.v1.ihat = 1;
+    (*t).cortes.v1.jhat = 0;
+    (*t).cortes.v2.ihat = 0;
+    (*t).cortes.v2.jhat = 1;
+    
+    if(((!m.v1.jhat) && (!m.v2.ihat)) || ((!m.v1.ihat) && (!m.v2.jhat))) return;
+    
     if(!m.v1.ihat){
-        (*t).modo = 1;
-        (*t).expansiones.v1.ihat = (*t).expansiones.v1.jhat;
-        (*t).expansiones.v2.jhat = (*t).expansiones.v2.ihat;
+        (*t).expansiones.v1.ihat = (*t).expansiones.v2.ihat;
+        (*t).expansiones.v2.jhat = (*t).expansiones.v1.jhat;
         (*t).expansiones.v1.jhat = 0;
         (*t).expansiones.v2.ihat = 0;
         (*t).cortes.v1.ihat = 0;
@@ -90,28 +85,21 @@ void transfElem(Matriz m, Transformaciones * t){
         (*t).cortes.v2.jhat = m.v2.jhat / m.v1.jhat;
         return;
     }
+    
     if(!m.v2.ihat){
-        (*t).modo = 1;
         (*t).expansiones.v1.jhat = 0;
-        (*t).cortes.v1.ihat = 1;
         (*t).cortes.v1.jhat = m.v1.jhat/m.v2.jhat;
-        (*t).cortes.v2.ihat = 0;
-        (*t).cortes.v2.jhat = 1;
         return;
     }
+    
     if(!m.v1.jhat){
         (*t).expansiones.v2.ihat = 0;
-        (*t).cortes.v1.ihat = 1;
-        (*t).cortes.v1.jhat = 0;
         (*t).cortes.v2.ihat = m.v2.ihat/m.v1.ihat;
-        (*t).cortes.v2.jhat = 1;
         return;
     }
+    
     (*t).expansiones.v1.ihat = 0;
-    (*t).cortes.v1.ihat = m.v1.ihat/m.v2.ihat;
-    (*t).cortes.v1.jhat = 1;
-    (*t).cortes.v2.ihat = 1;
-    (*t).cortes.v2.jhat = 0;
+    (*t).cortes.v1.jhat = m.v1.ihat/m.v2.ihat;
 }
 
 void rellenaMat(Matriz * m, Transformaciones * t){
@@ -156,13 +144,6 @@ void asignarCar(char cadena[], char car[]){
     cadena[20] = car[1];
 }
 
-//Ocupamos hacer que esto sea mas inteligente para que las cosas se vean mas naturales
-void rellenaFun(Buffer * b, int inicio, int fin, int x){
-    for(fin ; fin < inicio; fin++){
-        asignarCar((*b).cadenas[fin][x-1], "OO");
-        asignarRGB((*b).cadenas[fin][x-1], "255", "255", "255");
-    }
-}
 
 double evaluFun(Numero * n, int num, int col){
     return (pow(num - col /2, (*n).exponente) * (*n).coeficiente);
@@ -204,10 +185,45 @@ void iniciarFun(Expresion * e){
     }
 }
 
-void dibujarFun(Expresion * e, Buffer * b, Matriz * m){
+//Ocupamos hacer que esto sea mas inteligente para que las cosas se vean mas naturales
+void rellenaFun(Buffer * b, double anterior, Vector punto, Transformaciones * t){
+    int i, x, y;
+    int dif = (int)(anterior - punto.jhat);
+    Vector dummy;
+    dummy.ihat = punto.ihat;
+    if(dif > 0){
+        for(i = 0; i <= dif; i++){
+            dummy.jhat = punto.jhat+i;
+            aplicarTra(&(*t).cortes, &dummy);
+            y = (*b).filas - ((int)dummy.jhat + (*b).filas / 2) - 1;
+            x = ((int)dummy.ihat + (*b).columnas / 2) - (*b).par;
+            if(((x < (*b).columnas) && (x >= 0))&&
+            ((y < (*b).filas   ) && (y >= 0))){
+                asignarCar((*b).cadenas[y][x], "OO");
+                asignarRGB((*b).cadenas[y][x], "081", "217", "133");
+            }
+        }
+    }
+    else{
+        dummy.ihat--;
+        for(i = 0; i >= dif; i--){
+            dummy.jhat = punto.jhat+i;
+            aplicarTra(&(*t).cortes, &dummy);
+            y = (*b).filas - ((int)dummy.jhat + (*b).filas / 2) - 1;
+            x = ((int)dummy.ihat + (*b).columnas / 2) - (*b).par;
+            if(((x < (*b).columnas) && (x >= 0))&&
+               ((y < (*b).filas   ) && (y >= 0))){
+                asignarCar((*b).cadenas[y][x], "OO");
+                asignarRGB((*b).cadenas[y][x], "081", "217", "133");
+            }
+        }
+    }
+}
+
+void dibujarFun(Expresion * e, Buffer * b, Transformaciones * t){
     //debemos de revisar la evaluacion de funciones y considerar hacer polinomios de la forma (x-1)(x+15)...etc
     Vector v;
-    int anterior = -1;
+    double anterior = -1;
     int i, j, x, y;
     
     for(i = 0; i < (*b).columnas; i++){
@@ -216,25 +232,20 @@ void dibujarFun(Expresion * e, Buffer * b, Matriz * m){
         for(j = 0; j < (*e).longitud; j++){
             v.jhat += evaluFun(&(*e).terminos[j], i, (*b).columnas);
         }
-        aplicarTra(m, &v);
 
+        aplicarTra(&(*t).expansiones, &v);
+
+        if((anterior != -1) && (i != 0)){
+            if(abs((int)(anterior - v.jhat)) > (*b).filas) continue;
+            if((anterior > v.jhat + 1) || (anterior < v.jhat - 1)) rellenaFun(b, anterior, v, t);
+        }
         y = (*b).filas - ((int)v.jhat + (*b).filas / 2) - 1;
         x = ((int)v.ihat + (*b).columnas / 2) - (*b).par;
-        
         if(((x < (*b).columnas) && (x >= 0))&&
            ((y < (*b).filas   ) && (y >= 0))){
             asignarRGB((*b).cadenas[y][x], "081", "217", "133");
             asignarCar((*b).cadenas[y][x], "OO");
-
-            //Falta que funcione con transformaciones
-            /*
-            if((anterior != -1)&&(i != 0)){
-                if((anterior != y - 1) && (anterior != y) && (anterior != y + 1)){
-                    if(anterior < y) rellenaFun(b, y, anterior, x);
-                    else rellenaFun(b, anterior, y, x+1);
-                }
-            }*/
-            anterior = y;
+            anterior = v.jhat;
         }
     }
 }
@@ -352,14 +363,11 @@ int main(){
     int dummy;
     
     rellenaMat(&m, &t);
-    printf("Expansiones\n");
-    /*
     iniciarBuffer(&b, 51,51);
     iniciarFun(&e);
-    dibujarFun(&e, &b, &m);
+    dibujarFun(&e, &b, &t);
     imprimeBuffer(&b);
     scanf("%d", &dummy);
-*/
     
     return 0;
 }
