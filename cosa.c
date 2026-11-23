@@ -192,6 +192,7 @@ void iniciarFun(Expresion * e){
 void rellenaFun(Buffer * b, Vector anterior, Vector punto, Transformaciones * t){
     int x, y, ini, fin;
     Vector dummy;
+    //Ahora ya solo hay un detalle en el que estan mal desplazadas las x
     if(anterior.jhat > punto.jhat){
         dummy.ihat = anterior.ihat;
         ini = ((int)anterior.jhat);
@@ -202,15 +203,11 @@ void rellenaFun(Buffer * b, Vector anterior, Vector punto, Transformaciones * t)
         ini = ((int)punto.jhat)-1;
         fin = (int)anterior.jhat;
     }
-    // printf("Inicio : %d\n", ini);
-    // printf("Final  : %d\n", fin);
-    // printf("Phat   : %lf\n", punto.jhat);
-    // printf("Ahat   : %lf\n\n", anterior.jhat);
     for(ini; ini > fin; ini--){
         dummy.jhat = (double)ini;
         aplicarTra(&(*t).cortes, &dummy);
         y = (*b).filas - ((int)dummy.jhat + (*b).filas / 2) - 1;
-        x = (int)dummy.ihat + (*b).columnas / 2 - (*b).par;
+        x = (int)dummy.ihat + (*b).columnas / 2 - (*b).par-1;
         if(!(*t).expansiones.v1.ihat){
             y-=((*b).par);
             x+=((*b).par);
