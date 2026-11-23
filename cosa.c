@@ -199,15 +199,15 @@ void rellenaFun(Buffer * b, Vector anterior, Vector punto, Transformaciones * t)
         fin = (int)punto.jhat;
     }
     else{
-        dummy.ihat = punto.ihat;
-        ini = ((int)punto.jhat)-1;
+        dummy.ihat = anterior.ihat+1;
+        ini = ((int)punto.jhat);
         fin = (int)anterior.jhat;
     }
     for(ini; ini > fin; ini--){
         dummy.jhat = (double)ini;
         aplicarTra(&(*t).cortes, &dummy);
         y = (*b).filas - ((int)dummy.jhat + (*b).filas / 2) - 1;
-        x = (int)dummy.ihat + (*b).columnas / 2 - (*b).par-1;
+        x = (int)dummy.ihat + (*b).columnas / 2 - (*b).par;
         if(!(*t).expansiones.v1.ihat){
             y-=((*b).par);
             x+=((*b).par);
@@ -234,6 +234,7 @@ void rellenaFun(Buffer * b, Vector anterior, Vector punto, Transformaciones * t)
         if(!(*t).expansiones.v1.ihat){
             y-=((*b).par);
             x+=((*b).par);
+            if(anterior.ihat > punto.ihat) y++;
         }
         if((x < 0)||(x >= (*b).columnas)||(y < 0)||(y >= (*b).filas)) continue;
         asignarRGB((*b).cadenas[y][x], "081", "217", "133");
@@ -398,7 +399,7 @@ int main(){
     printf("Cortes\n");
     printf("%lf   %lf\n", t.cortes.v1.ihat, t.cortes.v2.ihat);
     printf("%lf   %lf\n", t.cortes.v1.jhat, t.cortes.v2.jhat);
-    iniciarBuffer(&b, 44,44);
+    iniciarBuffer(&b, 45,45);
     iniciarFun(&e);
     dibujarFun(&e, &b, &t);
     imprimeBuffer(&b);
