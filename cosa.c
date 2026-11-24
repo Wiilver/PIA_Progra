@@ -35,6 +35,58 @@ typedef struct{
     Matriz cortes;
 }Transformaciones;
 
+int limpiarBufferNum(){
+    char basura;
+    int rep = 0;
+    while(1){
+        scanf("%c", &basura);
+        if(basura == '\n') break;
+        rep++;
+    }
+    if(rep > 0){
+        system("cls");
+        printf("Solo se admiten numeros como respuestas, por favor, intentelo nuevamente\n\n");
+        return 0;
+    }
+    return 1;
+}
+
+int limpiarBufferStr(char * str){
+    int i;
+    char basura;
+    for(i = 0; i < 20; i++){
+        if(str[i] == '\n'){
+            str[i] = '\0';
+            return 1;
+        }
+    }
+    while(1){
+        scanf("%c", &basura);
+        if(basura == '\n'){
+            system("cls");
+            printf("La cadena ingresada supero la longitud maxima, por favor, intentelo nuevamente\n\n");
+            return 0;
+        } 
+    }
+}
+
+int verificarStr(char * str){
+    int i = 0;
+    while(1){
+        if(i==20) return 0;
+        if(str[i]=='\0'){
+            return (i > 0);
+        }
+        if(
+            ((str[i] < 65) || (str[i] > 90))&&
+            ((str[i] < 97) || (str[i] > 122))&&
+            ((str[i] < 48) || (str[i] > 57))
+        )return 0;
+        i++;
+    }
+}
+
+
 void aplicarTra(Matriz * m, Vector * v){
     double num = (*v).ihat;
     (*v).ihat = (((*m).v1.ihat * (*v).ihat) + ((*m).v2.ihat * (*v).jhat));
@@ -107,27 +159,39 @@ void transfElem(Matriz m, Transformaciones * t){
 
 void rellenaMat(Matriz * m, Transformaciones * t){
     while(1){
-        printf("Por favor, ingrese el valor para la componente i de su primer vector : ");
-        scanf("%lf", &(*m).v1.ihat);
+        while(1){
+            printf("Por favor, ingrese el valor para la componente i de su primer vector : ");
+            scanf("%lf", &(*m).v1.ihat);
+            if(limpiarBufferNum()) break;
+        }
 
-        printf("Por favor, ingrese el valor para la componente j de su primer vector : ");
-        scanf("%lf", &(*m).v1.jhat);
-        
-        printf("Por favor, ingrese el valor para la componente i de su segundo vector : ");
-        scanf("%lf", &(*m).v2.ihat);
+        while(1){
+            printf("Por favor, ingrese el valor para la componente j de su primer vector : ");
+            scanf("%lf", &(*m).v1.jhat);
+            if(limpiarBufferNum()) break;
+        }
 
-        printf("Por favor, ingrese el valor para la componente j de su segundo vector : ");
-        scanf("%lf", &(*m).v2.jhat);
+        while(1){
+            printf("Por favor, ingrese el valor para la componente i de su segundo vector : ");
+            scanf("%lf", &(*m).v2.ihat);
+            if(limpiarBufferNum()) break;
+        }
 
+        while(1){
+            printf("Por favor, ingrese el valor para la componente j de su segundo vector : ");
+            scanf("%lf", &(*m).v2.jhat);
+            if(limpiarBufferNum()) break;
+        }
+        system("cls");
         if(verificaMat((*m))){
             transfElem((*m), t);
             return;
         } 
-        system("cls");
         printf("La matriz ingresada no corresponde a una transformacion lineal, por favor, intentelo nuevamente\n\n");
     }
 
 }
+
 
 void asignarRGB(char cadena[], char R[], char G[], char B[]){
     cadena[7]  = R[0];
@@ -187,23 +251,13 @@ void iniciarFun(Expresion * e){
     }
 }
 
-void auxiliaFun(Buffer * b, Vector v, Matriz * m){
+void auxiliaFun(Buffer * b, Vector v, char * cad, char* R, char* G, char *B){
     int x, y;
-    aplicarTra(m, &v);
     y = ((*b).filas / 2 - (*b).par) - (int)round(v.jhat);
     x = (int)round(v.ihat) + (*b).columnas / 2;
     if((x < 0)||(x >= (*b).columnas)||(y < 0)||(y >= (*b).filas)) return;
-    asignarRGB((*b).cadenas[y][x], "081", "217", "133");
-    asignarCar((*b).cadenas[y][x], "OO");
-}
-
-void auxiliaRel(Buffer * b, Vector v,Matriz* m, int ini, int fin, int modo){
-    for(ini; ini > fin; ini--){
-        Vector dummy = v;
-        if(modo) dummy.jhat = (double)ini;
-        else dummy.ihat = (double)ini;
-        auxiliaFun(b,dummy,m);
-    }
+    asignarRGB((*b).cadenas[y][x], R, G, B);
+    asignarCar((*b).cadenas[y][x], cad);
 }
 
 void rellenaFun(Buffer * b, Vector anterior, Vector punto, Transformaciones * t){
@@ -220,7 +274,8 @@ void rellenaFun(Buffer * b, Vector anterior, Vector punto, Transformaciones * t)
         Vector dummy;
         dummy.ihat = anterior.ihat + dx * factor;
         dummy.jhat = anterior.jhat + dy * factor;
-        auxiliaFun(b, dummy, &(*t).cortes);
+        aplicarTra(&(*t).cortes, &dummy);
+        auxiliaFun(b, dummy,"OO", "081", "217", "133");
     }
 }
 
@@ -248,62 +303,100 @@ void dibujarFun(Expresion * e, Buffer * b, Transformaciones * t){
         }
         
         anterior = v;
-        auxiliaFun(b,v,&(*t).cortes);
+        aplicarTra(&(*t).cortes, &v);
+        auxiliaFun(b, v,"OO", "081", "217", "133");
     }
 }
 
-void auxiliaBuffer(Buffer * b, int y, int x){
-    char cad[] = " .";
-    char col[] = "087";
-    if((x==(*b).columnas/2)||(y==(*b).filas/2-(*b).par)){
-        col[0] = '2';
-        col[1] = '5';
-        col[2] = '5';
-        if((x==(*b).columnas/2)&&(y==(*b).filas/2-(*b).par)){
-            cad[0] = 'O';
-            cad[1] = 'O';
-        }
-        else if((x==(*b).columnas/2)){
-            cad[0] = '|';
-            cad[1] = '|';
-        }
-        else{
-            cad[0] = '=';
-            cad[1] = '=';
-        }
-    }
-    asignarRGB((*b).cadenas[y][x], col, col, col);
-    asignarCar((*b).cadenas[y][x], cad);
-    if(x > 0) x-=(*b).par;
-    asignarRGB((*b).cadenas[(*b).columnas - (*b).par - y - 1][(*b).filas - x - 1], col, col, col);
-    asignarCar((*b).cadenas[(*b).columnas - (*b).par - y - 1][(*b).filas - x - 1], cad);
+
+void auxiliaBuffer(Buffer * b, Vector v, Transformaciones * t, char * cad, char * R, char * G, char * B){
+    int x, y;
+    Vector dummy = v;
+
+    aplicarTra(&(*t).expansiones, &dummy);
+    aplicarTra(&(*t).cortes, &dummy);
+
+    auxiliaFun(b, dummy, cad, R, G, B);
 }
 
-//ahi va, falta que se afecten por la transformacion
-void rellenaBuffer(Buffer * b){
-    int i, j, repeticiones, res, largo, indice;
-    largo = (*b).columnas/2;
-    repeticiones = (*b).columnas / 10 + 1;
+void rellLinTransf(Buffer * b, Vector ini, Vector fin, Transformaciones * t, char * cad, char * R, char * G, char * B){
+    int i, pasos;
+    double factor, dx, dy;
+    Vector inter;
 
-    Numero n = {0,0};
+    aplicarTra(&(*t).expansiones, &ini);
+    aplicarTra(&(*t).cortes, &ini);
 
-    for(i = 0; i < (*b).columnas/2; i++){
-        for(j = 0; j < repeticiones; j++){
-            n.coeficiente = (double)(j * 5);
-            res = (int)evaluFun(&n, i, (*b).columnas);
-            if(res <= (largo - (*b).par)){
-                indice = largo + res - (*b).par;
-                auxiliaBuffer(b, indice, i);
+    aplicarTra(&(*t).expansiones, &fin);
+    aplicarTra(&(*t).cortes, &fin);
 
-                indice += (*b).par;;
-                auxiliaBuffer(b, i, indice);
+    dx = fin.ihat - ini.ihat;
+    dy = fin.jhat - ini.jhat;
+    pasos = (int)ceil(fmax(fabs(dx), fabs(dy)));
 
-                indice = largo - res - (*b).par;
-                auxiliaBuffer(b, indice, i);
+    auxiliaFun(b, ini, cad, R, G, B);
+    auxiliaFun(b, fin, cad, R, G, B);
 
-                indice += (*b).par;
-                auxiliaBuffer(b, i, indice);
-            }
+    if(pasos <= 1) return;
+
+    for(i = 1; i < pasos; i++){
+        factor = (double)i / pasos;
+        inter.ihat = ini.ihat + dx * factor;
+        inter.jhat = ini.jhat + dy * factor;
+        auxiliaFun(b, inter, cad, R, G, B);
+    }
+}
+
+void rellenaBuffer(Buffer * b, Transformaciones * t){
+    int i;
+    int mitadX = (*b).columnas / 2;
+    int mitadY = (*b).filas / 2 - (*b).par;
+    int espacio = 5;
+    Vector ini, fin;
+
+    ini.jhat = (double)(-mitadY);
+    fin.jhat = -ini.jhat;
+    for(i = espacio; i <= mitadX; i += espacio){
+        ini.ihat = (double)i;
+        fin.ihat = ini.ihat;
+        rellLinTransf(b, ini, fin, t, " .", "087", "087", "087");
+
+        ini.ihat *= -1;
+        fin.ihat  = ini.ihat;
+        rellLinTransf(b, ini, fin, t, " .", "087", "087", "087");
+    }
+
+    ini.ihat = (double)(-mitadX);
+    fin.ihat = -ini.ihat;
+    for(i = espacio; i <= mitadY; i += espacio){
+        ini.jhat = (double)i;
+        fin.jhat = ini.jhat;
+        rellLinTransf(b, ini, fin, t, " .", "087", "087", "087");
+
+        ini.jhat *= -1;
+        fin.jhat = ini.jhat;
+        rellLinTransf(b, ini, fin, t, " .", "087", "087", "087");
+    }
+
+    ini.ihat = 0;
+    ini.jhat = (double)(-mitadY);
+    fin.ihat = 0;
+    fin.jhat = -ini.jhat;
+    rellLinTransf(b, ini, fin, t, "||", "255", "255", "255");
+
+    ini.ihat = (double)(-mitadX);
+    ini.jhat = 0;
+    fin.ihat = -ini.ihat;
+    fin.jhat = 0;
+    rellLinTransf(b, ini, fin, t, "==", "255", "255", "255");
+}
+
+void limpiarBuffer(Buffer * b){
+    int i, j;
+    for(i = 0; i < (*b).filas; i++){
+        for(j = 0; j < (*b).columnas; j++){
+            asignarRGB((*b).cadenas[i][j], "255", "255", "255");
+            asignarCar((*b).cadenas[i][j], "  ");
         }
     }
 }
@@ -339,7 +432,6 @@ void iniciarBuffer(Buffer * b, int filas, int columnas){
             (*b).cadenas[i][j][25] = '\0';
         }
     }
-    rellenaBuffer(b);
 }
 
 void imprimeBuffer(Buffer * b){
@@ -350,27 +442,217 @@ void imprimeBuffer(Buffer * b){
     }
 }
 
+
+void guardarImpresion(Buffer * b, Matriz * m, Expresion * e, Transformaciones * t){
+    int i, j;
+    char nombre[20];
+    char ruta[25];
+    ruta[24] = '\0';
+    ruta[23] = 't';
+    ruta[22] = 'x';
+    ruta[21] = 't';
+    ruta[20] = '.';
+    while(1){
+        printf("Por favor, ingrese el nombre en el que quiera guardar su impresion, solo se admiten letras y numeros\n");
+        printf("Nombre : ");
+        fgets(nombre, 20, stdin);
+        if(!limpiarBufferStr(nombre)) continue;
+        if(verificarStr(nombre)) break;
+        system("cls");
+        printf("El nombre dado del archivo no es valido, por favor, intentelo nuevamente\n\n");
+    }
+
+    for(i = 0; i < 20; i++){
+        if(nombre[i]!='\0'){
+            ruta[i] = nombre[i];
+            continue;
+        } 
+        ruta[i] = '.';
+        ruta[i+1] = 't';
+        ruta[i+2] = 'x';
+        ruta[i+3] = 't';
+        ruta[i+4] = '\0';
+        break;
+    }
+
+    FILE * salida = fopen(ruta, "w");
+    if(salida == NULL){
+        printf("\nParece que hubo un error al abrir el archivo, se terminara al programa");
+        return;
+    }
+    fprintf(salida, "La funcion graficada es y = ");
+    for(i = 0; i < (*e).longitud; i++){
+        fprintf(salida, "%.2lfx^%.2lf", (*e).terminos[i].coeficiente, (*e).terminos[i].exponente);
+        if(i<(*e).longitud-1) fprintf(salida, " + ");
+    }
+
+    fprintf(salida, "\n\n");
+
+    for(i = 0; i < (*b).filas; i ++){
+        for(j = 0; j < (*b).columnas; j++) fprintf(salida, "%c%c", (*b).cadenas[i][j][19], (*b).cadenas[i][j][20]);
+        fprintf(salida,"\n");
+    }
+
+    if(((*m).v1.ihat == 1) && ((*m).v1.jhat == 0) && ((*m).v2.ihat == 0) && ((*m).v2.jhat == 1)){
+        fprintf(salida, "\nComo la matriz dada fue la base canonica, no se sufrio ninguna transformacion");
+        fclose(salida);
+        return;
+    }
+
+    fprintf(salida, "Asi es como se ve la funcion al verse afectada por transformacion \n\n");
+    fprintf(salida, "%.2lf    %.2lf\n", (*m).v1.ihat, (*m).v2.ihat);
+    fprintf(salida, "%.2lf    %.2lf\n\n", (*m).v1.jhat, (*m).v2.jhat);
+    fprintf(salida, "La funcion en la base canonica se ve de la siguiente manera\n\n");
+
+    limpiarBuffer(b);
+    
+    Vector v = {1, 0};
+    (*t).cortes.v1 = v;
+    (*t).expansiones.v1 = v;
+    v.ihat = 0;
+    v.jhat = 1;
+    (*t).cortes.v2 = v;
+    (*t).expansiones.v2 = v;
+    
+    rellenaBuffer(b, t);
+    dibujarFun(e, b, t);
+    
+    for(i = 0; i < (*b).filas; i ++){
+        for(j = 0; j < (*b).columnas; j++) fprintf(salida, "%c%c", (*b).cadenas[i][j][19], (*b).cadenas[i][j][20]);
+        fprintf(salida,"\n");
+    }
+
+    fclose(salida);
+}
+
+void guardarBinario(Buffer * b, Matriz * m, Expresion * e, Transformaciones * t){
+    int i, j;
+    char nombre[20];
+    char ruta[25];
+
+    while(1){
+        printf("Por favor, ingrese el nombre para guardar el archivo binario (solo letras y numeros)\n");
+        printf("Nombre : ");
+        fgets(nombre, 20, stdin);
+        if(!limpiarBufferStr(nombre)) continue;
+        if(verificarStr(nombre)) break;
+        system("cls");
+        printf("El nombre dado del archivo no es valido, por favor, intentelo nuevamente\n\n");
+    }
+
+    for(i = 0; i < 20; i++){
+        if(nombre[i] != '\0'){
+            ruta[i] = nombre[i];
+            continue;
+        }
+        ruta[i]   = '.';
+        ruta[i+1] = 'b';
+        ruta[i+2] = 'i';
+        ruta[i+3] = 'n';
+        ruta[i+4] = '\0';
+        break;
+    }
+
+    FILE * salida = fopen(ruta, "wb");
+    if(salida == NULL){
+        printf("\nParece que hubo un error al abrir el archivo binario\n");
+        return;
+    }
+
+    fwrite(m, sizeof(Matriz), 1, salida);
+    fwrite(t, sizeof(Transformaciones), 1, salida);
+
+    fwrite(&(*e).longitud, sizeof(int), 1, salida);
+    fwrite((*e).terminos, sizeof(Numero), (*e).longitud, salida);
+
+    fwrite(&(*b).filas, sizeof(int), 1, salida);
+    fwrite(&(*b).columnas, sizeof(int), 1, salida);
+    fwrite(&(*b).par, sizeof(int), 1, salida);
+    for(i = 0; i < (*b).filas; i++){
+        for(j = 0; j < (*b).columnas; j++){
+            fwrite((*b).cadenas[i][j], sizeof(char), 26, salida);
+        }
+    }
+
+    fclose(salida);
+}
+
+int cargarBinario(Buffer * b, Matriz * m, Expresion * e, Transformaciones * t){
+    int i, j;
+    char nombre[20];
+    char ruta[25];
+
+    while(1){
+        printf("Por favor, ingrese el nombre del archivo binario a cargar (sin extension)\n");
+        printf("Nombre : ");
+        fgets(nombre, 20, stdin);
+        if(!limpiarBufferStr(nombre)) continue;
+        if(verificarStr(nombre)) break;
+        system("cls");
+        printf("El nombre dado del archivo no es valido, por favor, intentelo nuevamente\n\n");
+    }
+
+    for(i = 0; i < 20; i++){
+        if(nombre[i] != '\0'){
+            ruta[i] = nombre[i];
+            continue;
+        }
+        ruta[i]   = '.';
+        ruta[i+1] = 'b';
+        ruta[i+2] = 'i';
+        ruta[i+3] = 'n';
+        ruta[i+4] = '\0';
+        break;
+    }
+
+    FILE * entrada = fopen(ruta, "rb");
+    if(entrada == NULL){
+        printf("\nNo se pudo abrir el archivo binario\n");
+        return 0;
+    }
+
+    fread(m, sizeof(Matriz), 1, entrada);
+    fread(t, sizeof(Transformaciones), 1, entrada);
+
+    fread(&(*e).longitud, sizeof(int), 1, entrada);
+    (*e).terminos = calloc((*e).longitud, sizeof(Numero));
+    fread((*e).terminos, sizeof(Numero), (*e).longitud, entrada);
+
+    fread(&(*b).filas, sizeof(int), 1, entrada);
+    fread(&(*b).columnas, sizeof(int), 1, entrada);
+    fread(&(*b).par, sizeof(int), 1, entrada);
+
+    (*b).cadenas = calloc((*b).filas, sizeof(char**));
+    for(i = 0; i < (*b).filas; i++){
+        (*b).cadenas[i] = calloc((*b).columnas, sizeof(char*));
+        for(j = 0; j < (*b).columnas; j++){
+            (*b).cadenas[i][j] = calloc(26, sizeof(char));
+            fread((*b).cadenas[i][j], sizeof(char), 26, entrada);
+        }
+    }
+
+    fclose(entrada);
+    return 1;
+}
+
 int main(){
     HANDLE consola = GetStdHandle(STD_OUTPUT_HANDLE);
     DWORD modo;
     GetConsoleMode(consola, &modo);
     SetConsoleMode(consola, modo | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
     
-    Matriz m ;
     Transformaciones t;
     Expresion e;
+    Matriz m ;
     Buffer b;
     int dummy;
     
     rellenaMat(&m, &t);
-    printf("Expansiones\n");
-    printf("%lf   %lf\n", t.expansiones.v1.ihat, t.expansiones.v2.ihat);
-    printf("%lf   %lf\n", t.expansiones.v1.jhat, t.expansiones.v2.jhat);
-    printf("Cortes\n");
-    printf("%lf   %lf\n", t.cortes.v1.ihat, t.cortes.v2.ihat);
-    printf("%lf   %lf\n", t.cortes.v1.jhat, t.cortes.v2.jhat);
-    iniciarBuffer(&b, 45,45);
     iniciarFun(&e);
+    
+    iniciarBuffer(&b, 45,45);
+    rellenaBuffer(&b, &t);
+    
     dibujarFun(&e, &b, &t);
     imprimeBuffer(&b);
     scanf("%d", &dummy);
