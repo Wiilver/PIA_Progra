@@ -129,7 +129,6 @@ void rellenaMat(Matriz * m, Transformaciones * t){
 
 }
 
-
 void asignarRGB(char cadena[], char R[], char G[], char B[]){
     cadena[7]  = R[0];
     cadena[8]  = R[1];
@@ -188,68 +187,50 @@ void iniciarFun(Expresion * e){
     }
 }
 
-//Ocupamos hacer que esto sea mas inteligente para que las cosas se vean mas naturales
+void auxiliaFun(Buffer * b, Vector v, Matriz * m){
+    int x, y;
+    aplicarTra(m, &v);
+    y = ((*b).filas / 2 - (*b).par) - (int)round(v.jhat);
+    x = (int)round(v.ihat) + (*b).columnas / 2;
+    if((x < 0)||(x >= (*b).columnas)||(y < 0)||(y >= (*b).filas)) return;
+    asignarRGB((*b).cadenas[y][x], "081", "217", "133");
+    asignarCar((*b).cadenas[y][x], "OO");
+}
+
+void auxiliaRel(Buffer * b, Vector v,Matriz* m, int ini, int fin, int modo){
+    for(ini; ini > fin; ini--){
+        Vector dummy = v;
+        if(modo) dummy.jhat = (double)ini;
+        else dummy.ihat = (double)ini;
+        auxiliaFun(b,dummy,m);
+    }
+}
+
 void rellenaFun(Buffer * b, Vector anterior, Vector punto, Transformaciones * t){
-    int x, y, ini, fin;
-    Vector dummy;
-    //Ahora ya solo hay un detalle en el que estan mal desplazadas las x
-    if(anterior.jhat > punto.jhat){
-        dummy.ihat = anterior.ihat;
-        ini = ((int)anterior.jhat);
-        fin = (int)punto.jhat;
-    }
-    else{
-        dummy.ihat = anterior.ihat+1;
-        ini = ((int)punto.jhat);
-        fin = (int)anterior.jhat;
-    }
-    for(ini; ini > fin; ini--){
-        dummy.jhat = (double)ini;
-        aplicarTra(&(*t).cortes, &dummy);
-        y = (*b).filas - ((int)dummy.jhat + (*b).filas / 2) - 1;
-        x = (int)dummy.ihat + (*b).columnas / 2 - (*b).par;
-        if(!(*t).expansiones.v1.ihat){
-            y-=((*b).par);
-            x+=((*b).par);
-        }
-        if((x < 0)||(x >= (*b).columnas)||(y < 0)||(y >= (*b).filas)) continue;
-        asignarRGB((*b).cadenas[y][x], "081", "217", "133");
-        asignarCar((*b).cadenas[y][x], "OO");
-    }
-    if(anterior.ihat > punto.ihat){
-        dummy.jhat = anterior.jhat;
-        ini = (int)anterior.ihat;
-        fin = (int)punto.ihat;
-    }
-    else{
-        dummy.jhat = punto.jhat;
-        ini = (int)punto.ihat;
-        fin = (int)anterior.ihat;
-    }
-    for(ini; ini > fin; ini--){
-        dummy.ihat = (double)ini;
-        aplicarTra(&(*t).cortes, &dummy);
-        y = (*b).filas - ((int)dummy.jhat + (*b).filas / 2) - 1;
-        x = (int)dummy.ihat + (*b).columnas / 2 - (*b).par;
-        if(!(*t).expansiones.v1.ihat){
-            y-=((*b).par);
-            x+=((*b).par);
-            if(anterior.ihat > punto.ihat) y++;
-        }
-        if((x < 0)||(x >= (*b).columnas)||(y < 0)||(y >= (*b).filas)) continue;
-        asignarRGB((*b).cadenas[y][x], "081", "217", "133");
-        asignarCar((*b).cadenas[y][x], "OO");
+    int i, pasos;
+    double dx = punto.ihat - anterior.ihat;
+    double dy = punto.jhat - anterior.jhat;
+    
+    pasos = (int)ceil(fmax(fabs(dx), fabs(dy)));
+    
+    if(pasos <= 1) return;
+
+    for(i= 1; i < pasos; i++){
+        double factor = (double)i / pasos;
+        Vector dummy;
+        dummy.ihat = anterior.ihat + dx * factor;
+        dummy.jhat = anterior.jhat + dy * factor;
+        auxiliaFun(b, dummy, &(*t).cortes);
     }
 }
 
 void dibujarFun(Expresion * e, Buffer * b, Transformaciones * t){
-    //debemos de revisar la evaluacion de funciones y considerar hacer polinomios de la forma (x-1)(x+15)...etc
     Vector v;
     Vector anterior = {(*b).columnas,(*b).filas};
-    int i, j, x, y;
+    int i, j;
     
     for(i = 0; i < (*b).columnas; i++){
-        v.ihat = i - (*b).filas / 2 + (*b).par;
+        v.ihat = i - (*b).columnas / 2;
         v.jhat = 0;
         for(j = 0; j < (*e).longitud; j++){
             v.jhat += evaluFun(&(*e).terminos[j], i, (*b).columnas);
@@ -267,20 +248,9 @@ void dibujarFun(Expresion * e, Buffer * b, Transformaciones * t){
         }
         
         anterior = v;
-        aplicarTra(&(*t).cortes, &v);
-        y = (*b).filas - ((int)v.jhat + (*b).filas / 2) - 1;
-        x = (int)v.ihat + (*b).columnas / 2 - (*b).par;
-        if(!(*t).expansiones.v1.ihat){
-            y-=((*b).par);
-            x+=((*b).par);
-        }
-        if((x < 0)||(x >= (*b).columnas)||(y < 0)||(y >= (*b).filas)) continue;
-
-        asignarRGB((*b).cadenas[y][x], "081", "217", "133");
-        asignarCar((*b).cadenas[y][x], "OO");
+        auxiliaFun(b,v,&(*t).cortes);
     }
 }
-
 
 void auxiliaBuffer(Buffer * b, int y, int x){
     char cad[] = " .";
@@ -316,7 +286,7 @@ void rellenaBuffer(Buffer * b){
     repeticiones = (*b).columnas / 10 + 1;
 
     Numero n = {0,0};
-    
+
     for(i = 0; i < (*b).columnas/2; i++){
         for(j = 0; j < repeticiones; j++){
             n.coeficiente = (double)(j * 5);
