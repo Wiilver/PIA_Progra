@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <windows.h>
 #include <math.h>
+#include <time.h>
 
 typedef struct{
     double coeficiente;
@@ -221,6 +222,7 @@ void iniciarFun(Expresion * e){
     while(1){
         printf("Por favor, indique el numero de terminos de su funcion, se le recuerda que no se permiten constantes : ");
         scanf("%d", &terminos);
+        if(!limpiarBufferNum()) continue;
         if(terminos > 0) break;
         system("cls");
         printf("El numero de terminos debe de ser mayor a 0, por favor, intentelo nuevamente\n\n");
@@ -232,6 +234,7 @@ void iniciarFun(Expresion * e){
         while(1){
             printf("Por favor, ingrese el coeficiente del termino numero %d : ", i+1);
             scanf("%lf", &coeficiente);
+            if(!limpiarBufferNum()) continue;
             if(coeficiente != 0) break;
             system("cls");
             printf("El coeficiente no puede ser igual a 0, por favor, intentalo nuevamente\n\n");
@@ -241,6 +244,7 @@ void iniciarFun(Expresion * e){
         while(1){
             printf("Por favor, ingrese el exponente del termino numero %d : ", i+1);
             scanf("%lf", &exponente);
+            if(!limpiarBufferNum()) continue;
             if(exponente != 0) break;
             system("cls");
             printf("El exponente no puede ser igual a 0, por favor, intentalo nuevamente\n\n");
@@ -310,7 +314,6 @@ void dibujarFun(Expresion * e, Buffer * b, Transformaciones * t){
 
 
 void auxiliaBuffer(Buffer * b, Vector v, Transformaciones * t, char * cad, char * R, char * G, char * B){
-    int x, y;
     Vector dummy = v;
 
     aplicarTra(&(*t).expansiones, &dummy);
@@ -443,6 +446,33 @@ void imprimeBuffer(Buffer * b){
 }
 
 
+void liberarExpresion(Expresion * e){
+    if((*e).terminos != NULL){
+        free((*e).terminos);
+        (*e).terminos = NULL;
+    }
+    (*e).longitud = 0;
+}
+
+void liberarBuffer(Buffer * b){
+    int i, j;
+    if((*b).cadenas != NULL){
+        for(i = 0; i < (*b).filas; i++){
+            if((*b).cadenas[i] != NULL){
+                for(j = 0; j < (*b).columnas; j++){
+                    free((*b).cadenas[i][j]);
+                }
+                free((*b).cadenas[i]);
+            }
+        }
+        free((*b).cadenas);
+        (*b).cadenas = NULL;
+    }
+    (*b).filas = 0;
+    (*b).columnas = 0;
+    (*b).par = 0;
+}
+
 void guardarImpresion(Buffer * b, Matriz * m, Expresion * e, Transformaciones * t){
     int i, j;
     char nombre[20];
@@ -505,17 +535,17 @@ void guardarImpresion(Buffer * b, Matriz * m, Expresion * e, Transformaciones * 
     fprintf(salida, "La funcion en la base canonica se ve de la siguiente manera\n\n");
 
     limpiarBuffer(b);
-    
+    Transformaciones dummy;
     Vector v = {1, 0};
-    (*t).cortes.v1 = v;
-    (*t).expansiones.v1 = v;
+    dummy.cortes.v1 = v;
+    dummy.expansiones.v1 = v;
     v.ihat = 0;
     v.jhat = 1;
-    (*t).cortes.v2 = v;
-    (*t).expansiones.v2 = v;
+    dummy.cortes.v2 = v;
+    dummy.expansiones.v2 = v;
     
-    rellenaBuffer(b, t);
-    dibujarFun(e, b, t);
+    rellenaBuffer(b, &dummy);
+    dibujarFun(e, b, &dummy);
     
     for(i = 0; i < (*b).filas; i ++){
         for(j = 0; j < (*b).columnas; j++) fprintf(salida, "%c%c", (*b).cadenas[i][j][19], (*b).cadenas[i][j][20]);
@@ -579,6 +609,7 @@ void guardarBinario(Buffer * b, Matriz * m, Expresion * e, Transformaciones * t)
 
 int cargarBinario(Buffer * b, Matriz * m, Expresion * e, Transformaciones * t){
     int i, j;
+    int nuevaLongitud, nuevasFilas, nuevasColumnas, nuevoPar;
     char nombre[20];
     char ruta[25];
 
@@ -611,28 +642,204 @@ int cargarBinario(Buffer * b, Matriz * m, Expresion * e, Transformaciones * t){
         return 0;
     }
 
-    fread(m, sizeof(Matriz), 1, entrada);
-    fread(t, sizeof(Transformaciones), 1, entrada);
+    if(fread(m, sizeof(Matriz), 1, entrada) != 1 ||
+       fread(t, sizeof(Transformaciones), 1, entrada) != 1 ||
+       fread(&nuevaLongitud, sizeof(int), 1, entrada) != 1 ||
+       nuevaLongitud <= 0){
+        printf("\nError al leer los datos base del archivo binario\n");
+        fclose(entrada);
+        return 0;
+    }
 
-    fread(&(*e).longitud, sizeof(int), 1, entrada);
-    (*e).terminos = calloc((*e).longitud, sizeof(Numero));
-    fread((*e).terminos, sizeof(Numero), (*e).longitud, entrada);
+    Numero * nuevosTerminos = calloc(nuevaLongitud, sizeof(Numero));
+    if(nuevosTerminos == NULL ||
+       fread(nuevosTerminos, sizeof(Numero), nuevaLongitud, entrada) != (size_t)nuevaLongitud){
+        printf("\nError al leer los terminos de la expresion\n");
+        free(nuevosTerminos);
+        fclose(entrada);
+        return 0;
+    }
 
-    fread(&(*b).filas, sizeof(int), 1, entrada);
-    fread(&(*b).columnas, sizeof(int), 1, entrada);
-    fread(&(*b).par, sizeof(int), 1, entrada);
+    if(fread(&nuevasFilas, sizeof(int), 1, entrada) != 1 ||
+       fread(&nuevasColumnas, sizeof(int), 1, entrada) != 1 ||
+       fread(&nuevoPar, sizeof(int), 1, entrada) != 1 ||
+       nuevasFilas <= 0 || nuevasColumnas <= 0){
+        printf("\nError al leer las dimensiones del buffer\n");
+        free(nuevosTerminos);
+        fclose(entrada);
+        return 0;
+    }
 
-    (*b).cadenas = calloc((*b).filas, sizeof(char**));
-    for(i = 0; i < (*b).filas; i++){
-        (*b).cadenas[i] = calloc((*b).columnas, sizeof(char*));
-        for(j = 0; j < (*b).columnas; j++){
-            (*b).cadenas[i][j] = calloc(26, sizeof(char));
-            fread((*b).cadenas[i][j], sizeof(char), 26, entrada);
+    char *** nuevasCadenas = calloc(nuevasFilas, sizeof(char**));
+    if(nuevasCadenas == NULL){
+        free(nuevosTerminos);
+        fclose(entrada);
+        return 0;
+    }
+
+    for(i = 0; i < nuevasFilas; i++){
+        nuevasCadenas[i] = calloc(nuevasColumnas, sizeof(char*));
+        if(nuevasCadenas[i] == NULL){
+            for(int k = 0; k < i; k++){
+                for(j = 0; j < nuevasColumnas; j++) free(nuevasCadenas[k][j]);
+                free(nuevasCadenas[k]);
+            }
+            free(nuevasCadenas);
+            free(nuevosTerminos);
+            fclose(entrada);
+            return 0;
+        }
+        for(j = 0; j < nuevasColumnas; j++){
+            nuevasCadenas[i][j] = calloc(26, sizeof(char));
+            if(nuevasCadenas[i][j] == NULL ||
+               fread(nuevasCadenas[i][j], sizeof(char), 26, entrada) != 26){
+                for(int colPrev = 0; colPrev <= j; colPrev++) free(nuevasCadenas[i][colPrev]);
+                free(nuevasCadenas[i]);
+                for(int k = 0; k < i; k++){
+                    for(int c = 0; c < nuevasColumnas; c++) free(nuevasCadenas[k][c]);
+                    free(nuevasCadenas[k]);
+                }
+                free(nuevasCadenas);
+                free(nuevosTerminos);
+                fclose(entrada);
+                return 0;
+            }
         }
     }
 
     fclose(entrada);
+
+    // Liberar recursos anteriores solo cuando todo se leyó correctamente
+    liberarExpresion(e);
+    liberarBuffer(b);
+
+    (*e).longitud = nuevaLongitud;
+    (*e).terminos = nuevosTerminos;
+
+    (*b).filas = nuevasFilas;
+    (*b).columnas = nuevasColumnas;
+    (*b).par = nuevoPar;
+    (*b).cadenas = nuevasCadenas;
+
     return 1;
+}
+
+
+void animar(Buffer * b, Transformaciones * t, Expresion * e){
+    double i;
+    Transformaciones dummy={{{1,0},{0,1}},{{1,0},{0,1}}};
+    limpiarBuffer(b);
+    rellenaBuffer(b, &dummy);
+    dibujarFun(e, b, &dummy);
+    imprimeBuffer(b);
+    if((((*t).cortes.v1.ihat==1)&&((*t).cortes.v2.ihat==0)&&
+        ((*t).cortes.v1.jhat==0)&&((*t).cortes.v2.jhat==1))&&
+       (((*t).expansiones.v1.ihat==1)&&((*t).expansiones.v2.ihat==0)&&
+        ((*t).expansiones.v1.jhat==0)&&((*t).expansiones.v2.jhat==1))){
+        printf("No se ha declarado ninguna transformacion lineal\n");
+        printf("Ingrese un numero para regresar al menu : ");
+        scanf("%lf", &i);
+        limpiarBufferNum();
+        system("cls");
+        return;
+    }
+    Transformaciones cambios = {
+        {{((*t).expansiones.v1.ihat-1)/20,(*t).expansiones.v1.jhat/20},
+          {(*t).expansiones.v2.ihat/20,((*t).expansiones.v2.jhat-1)/20}}, 
+        {{((*t).cortes.v1.ihat-1)/20,(*t).cortes.v1.jhat/20},
+          {(*t).cortes.v2.ihat/20,((*t).cortes.v2.jhat-1)/20}}};
+    
+    Sleep(75);
+    printf("\033[H");
+    for(i = 0.0; i <= 19.0; i+=1.0){
+        dummy.cortes.v1.ihat +=  cambios.cortes.v1.ihat; 
+        dummy.cortes.v1.jhat +=  cambios.cortes.v1.jhat; 
+        dummy.cortes.v2.ihat +=  cambios.cortes.v2.ihat; 
+        dummy.cortes.v2.jhat +=  cambios.cortes.v2.jhat; 
+        dummy.expansiones.v1.ihat +=  cambios.expansiones.v1.ihat; 
+        dummy.expansiones.v1.jhat +=  cambios.expansiones.v1.jhat; 
+        dummy.expansiones.v2.ihat +=  cambios.expansiones.v2.ihat; 
+        dummy.expansiones.v2.jhat +=  cambios.expansiones.v2.jhat; 
+        rellenaBuffer(b, &dummy);
+        dibujarFun(e, b, &dummy);
+        imprimeBuffer(b);
+        limpiarBuffer(b);
+        Sleep(75);
+        if(i != 19.0)printf("\033[H");
+    }
+    printf("Ingrese un numero para regresar al menu : ");
+    scanf("%lf", &i);
+    limpiarBufferNum();
+    system("cls");
+}
+
+void menu(){
+    Transformaciones t = {{{1, 0}, {0, 1}}, {{1, 0}, {0, 1}}};
+    Expresion e = {NULL, 0};
+    Matriz m = {{1, 0}, {0, 1}};
+    Buffer b;
+    int resp, fun = 0;
+    iniciarBuffer(&b, 53, 53);
+    while(1){
+        printf("Por favor, seleccione una de las siguientes opciones :\n");
+        printf("1.- Asignar una funcion para graficar\n");
+        printf("2.- Mostrar transformacion\n");
+        printf("3.- Asignar una transformacion lineal\n");
+        printf("4.- Cargar una transformacion lineal\n");
+        printf("5.- Guardar la impresion\n");
+        printf("6.- Guardar la transformacion\n");
+        printf("7.- Salir\n");
+        printf("Respuesta : ");
+        scanf("%d", &resp);
+        if(!limpiarBufferNum())continue;
+        if((resp < 1) || (resp > 7)){
+            printf("La respuesta dada esta fuera de los rangos permitidos, por favor, intentelo nuevamente\n\n");
+            continue;
+        }
+        system("cls");
+        switch(resp){
+            case 1:
+                iniciarFun(&e);
+                fun = 1;
+                break;
+            case 2:
+                if(!fun){
+                    printf("Solo puedes hacer esto despues de asignar una funcion\n\n");
+                    continue;
+                }
+                animar(&b, &t, &e);
+                break;
+            case 3:
+                rellenaMat(&m,&t);
+                break;
+            case 4:
+                if(cargarBinario(&b, &m, &e, &t)) fun = 1;
+                else fun = 0;
+                break;
+            case 5:
+                if(!fun){
+                    printf("Solo puedes hacer esto despues de asignar una funcion\n\n");
+                    continue;
+                }
+                limpiarBuffer(&b);
+                rellenaBuffer(&b, &t);
+                dibujarFun(&e, &b, &t);
+                guardarImpresion(&b, &m, &e, &t);
+                break;
+            case 6:
+                if(!fun){
+                    printf("Solo puedes hacer esto despues de asignar una funcion\n\n");
+                    continue;
+                }
+                limpiarBuffer(&b);
+                rellenaBuffer(&b, &t);
+                dibujarFun(&e, &b, &t);
+                guardarBinario(&b, &m, &e, &t);
+                break;
+            case 7:
+                return;
+        }
+    }
 }
 
 int main(){
@@ -641,21 +848,7 @@ int main(){
     GetConsoleMode(consola, &modo);
     SetConsoleMode(consola, modo | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
     
-    Transformaciones t;
-    Expresion e;
-    Matriz m ;
-    Buffer b;
-    int dummy;
-    
-    rellenaMat(&m, &t);
-    iniciarFun(&e);
-    
-    iniciarBuffer(&b, 45,45);
-    rellenaBuffer(&b, &t);
-    
-    dibujarFun(&e, &b, &t);
-    imprimeBuffer(&b);
-    scanf("%d", &dummy);
+    menu();
     
     return 0;
 }
